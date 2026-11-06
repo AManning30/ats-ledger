@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deterministic Enterprise ATS Auditor | 100% Client-Side</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JSZip for native client-side .docx OpenXML parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Inter & JetBrains Mono Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #090d16;
+            color: #f1f5f9;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased selection:bg-cyan-500 selection:text-slate-950">
+
+    <!-- Top Navigation / Status Header -->
+    <header class="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                    <svg class="w-6 h-6 text-slate-950" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2.5">
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white">Enterprise ATS Auditor</h1>
+                        <span class="px-2 py-0.5 text-[11px] font-mono font-semibold uppercase tracking-wider rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                            100% Client-Side
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400">Deterministic 100-Point Workday / Taleo / iCIMS Parsing Engine — Zero Cloud Uploads</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2.5">
+                <button id="btnLoadDemo" type="button" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 transition flex items-center gap-2 shadow-sm">
+                    <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Load 94/100 Demo (Mastercard)
+                </button>
+                <button id="btnRunAuditTop" type="button" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-lg shadow-cyan-500/20 transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Run ATS Audit
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Non-Modal Status Toast -->
+    <div id="statusToast" class="fixed bottom-5 right-5 z-50 hidden max-w-md px-4 py-3 rounded-xl bg-slate-900 border border-cyan-500/40 text-sm text-slate-100 shadow-2xl flex items-center gap-3">
+        <span id="statusToastDot" class="h-2.5 w-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+        <span id="statusToastText">Ready</span>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+
+        <!-- INPUT WORKSPACE -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Left Column: Resume Input + Native .docx OpenXML Parser -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-xl">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 text-xs font-mono font-bold rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">1</span>
+                            <h2 class="text-base font-semibold text-white">Candidate Resume (.docx, .txt, .md)</h2>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="xmlRepairBadge" class="hidden px-2 py-0.5 text-[11px] font-mono rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                XML Run-Spacing Repaired
+                            </span>
+                            <span id="resumeCharCount" class="text-xs font-mono text-slate-400">0 chars</span>
+                        </div>
+                    </div>
+
+                    <!-- File Dropzone -->
+                    <label for="resumeFileInput" id="dropzoneLabel" class="group cursor-pointer border-2 border-dashed border-slate-700 hover:border-cyan-400/70 rounded-xl p-4 bg-slate-950/60 hover:bg-slate-900/80 transition flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2.5 rounded-lg bg-slate-800 group-hover:bg-cyan-500/20 text-cyan-400 transition">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-slate-200 group-hover:text-white">
+                                    Drop your <span class="text-cyan-400 font-mono">.docx</span>, <span class="text-cyan-400 font-mono">.txt</span>, or <span class="text-cyan-400 font-mono">.md</span> resume here
+                                </p>
+                                <p class="text-xs text-slate-400">Auto-joins Word &lt;w:t&gt; XML runs with spaces to prevent merged-word bugs</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-200 group-hover:bg-cyan-500 group-hover:text-slate-950 transition shrink-0">
+                            Browse File
+                        </span>
+                        <input id="resumeFileInput" type="file" accept=".docx,.txt,.md" class="hidden" />
+                    </label>
+
+                    <!-- Raw / Extracted Resume Textarea -->
+                    <div class="relative">
+                        <textarea id="resumeText" rows="11" placeholder="Upload a .docx/.txt file above or paste your raw resume text here..." class="w-full rounded-xl bg-slate-950 border border-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 p-3.5 text-xs sm:text-sm font-mono text-slate-200 placeholder-slate-600 leading-relaxed resize-y"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-1 text-xs text-slate-400">
+                    <span>Saved automatically to your browser's local storage</span>
+                    <button id="btnClearResume" type="button" class="text-slate-400 hover:text-rose-400 transition font-medium">Clear Resume</button>
+                </div>
+            </div>
+
+            <!-- Right Column: Job Description Input + Controls -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-xl">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 text-xs font-mono font-bold rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">2</span>
+                            <h2 class="text-base font-semibold text-white">Target Job Description (JD)</h2>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="jdCharCount" class="text-xs font-mono text-slate-400">0 chars</span>
+                        </div>
+                    </div>
+
+                    <!-- JD Toolbar: Clipboard Paste + Required Years -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                        <div class="flex items-center gap-2">
+                            <button id="btnPasteClipboard" type="button" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                </svg>
+                                Paste JD from Clipboard
+                            </button>
+                            <label for="jdFileInput" class="cursor-pointer px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                                Upload JD File
+                                <input id="jdFileInput" type="file" accept=".docx,.txt,.md" class="hidden" />
+                            </label>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <label for="reqYearsInput" class="text-xs font-medium text-slate-300">Required Tenure (Yrs):</label>
+                            <input id="reqYearsInput" type="number" min="0" max="25" value="3" class="w-16 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-white text-center focus:border-cyan-500 focus:outline-none" />
+                        </div>
+                    </div>
+
+                    <!-- JD Textarea -->
+                    <div class="relative">
+                        <textarea id="jdText" rows="11" placeholder="Paste the full target Job Description from LinkedIn, Workday, or Indeed here (EEO & legal disclaimers are automatically stripped)..." class="w-full rounded-xl bg-slate-950 border border-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 p-3.5 text-xs sm:text-sm font-mono text-slate-200 placeholder-slate-600 leading-relaxed resize-y"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-1 text-xs text-slate-400">
+                    <span>3-Layer EEO, Pay Range & Action-Verb Filter Active</span>
+                    <button id="btnClearJd" type="button" class="text-slate-400 hover:text-rose-400 transition font-medium">Clear JD</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Action Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-900 to-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg">
+            <div class="flex items-center gap-3">
+                <div class="h-2.5 w-2.5 rounded-full bg-emerald-400"></div>
+                <p id="diagnosticsBanner" class="text-xs sm:text-sm font-mono text-slate-300">
+                    [Diagnostics] Ready to run deterministic 100-point audit.
+                </p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="btnExportTxt" type="button" class="px-3.5 py-2 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export Scorecard (.txt)
+                </button>
+                <button id="btnExportCsv" type="button" class="px-3.5 py-2 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export Ledger (.csv)
+                </button>
+                <button id="btnRunAuditMain" type="button" class="px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 shadow-lg shadow-cyan-500/25 transition">
+                    Calculate ATS Score
+                </button>
+            </div>
+        </div>
+
+        <!-- SCORECARD OVERVIEW PANEL -->
+        <section id="scorecardSection" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Composite Score Gauge Card (4 Cols) -->
+            <div class="lg:col-span-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl relative overflow-hidden">
+                <div class="absolute -right-12 -top-12 w-40 h-40 rounded-full bg-cyan-500/10 blur-2xl pointer-events-none"></div>
+                <div>
+                    <span class="text-xs font-mono uppercase tracking-wider text-cyan-400 font-semibold">Composite Enterprise Score</span>
+                    <h3 class="text-sm text-slate-400 mt-0.5">Weighted 5-Component Rubric</h3>
+                </div>
+
+                <div class="my-6 flex items-baseline gap-3">
+                    <span id="compositeScoreDisplay" class="text-6xl sm:text-7xl font-extrabold tracking-tight text-emerald-400 font-mono">--</span>
+                    <span class="text-2xl font-mono text-slate-500">/ 100</span>
+                </div>
+
+                <!-- Key Gate Pills -->
+                <div class="space-y-2.5 pt-4 border-t border-slate-800/80 text-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400">Knockout Gate Status:</span>
+                        <span id="knockoutBadge" class="px-2.5 py-0.5 rounded-md font-mono font-semibold bg-slate-800 text-slate-300">WAITING</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400">Calculated Resume Tenure:</span>
+                        <span id="tenureBadge" class="font-mono font-semibold text-slate-200">0 Years (0 ranges)</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400">Extracted Clean JD Entities:</span>
+                        <span id="entityCountBadge" class="font-mono font-semibold text-cyan-300">0 requirements</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5 Component Breakdown Bars (8 Cols) -->
+            <div class="lg:col-span-8 bg-slate-900/90 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-semibold text-white">Deterministic 5-Component Breakdown</h3>
+                        <p class="text-xs text-slate-400">Exact mathematical formula modeled on Workday, Taleo, and Textkernel rankers</p>
+                    </div>
+                    <span class="text-xs font-mono text-slate-400">Max 100.0 Pts</span>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Comp 1 -->
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs sm:text-sm">
+                            <span class="font-medium text-slate-200">1. Weighted Keyword &amp; Taxonomy Match <span class="text-xs text-slate-500 font-mono">(Req 2x, Pref 1x)</span></span>
+                            <span class="font-mono font-semibold text-cyan-300"><span id="comp1Val">0.00</span> / 45.0</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                            <div id="comp1Bar" class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Comp 2 -->
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs sm:text-sm">
+                            <span class="font-medium text-slate-200">2. Contextual Placement &amp; Recency <span class="text-xs text-slate-500 font-mono">(Exp 1.0x vs Skills-Only 0.4x)</span></span>
+                            <span class="font-mono font-semibold text-cyan-300"><span id="comp2Val">0.00</span> / 20.0</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                            <div id="comp2Bar" class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Comp 3 -->
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs sm:text-sm">
+                            <span class="font-medium text-slate-200">3. Title Alignment, Calculated Tenure &amp; Quantified Scale <span class="text-xs text-slate-500 font-mono">($, %, headcount)</span></span>
+                            <span class="font-mono font-semibold text-cyan-300"><span id="comp3Val">0.00</span> / 15.0</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                            <div id="comp3Bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Comp 4 -->
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs sm:text-sm">
+                            <span class="font-medium text-slate-200">4. Hard Knockout Gates <span class="text-xs text-slate-500 font-mono">(Degree / Credential Taxonomy Verification)</span></span>
+                            <span class="font-mono font-semibold text-cyan-300"><span id="comp4Val">0.00</span> / 10.0</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                            <div id="comp4Bar" class="h-full bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Comp 5 -->
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs sm:text-sm">
+                            <span class="font-medium text-slate-200">5. HR-XML Parseability Hygiene <span class="text-xs text-slate-500 font-mono">(Section Headers &amp; Standard Date Ranges)</span></span>
+                            <span class="font-mono font-semibold text-cyan-300"><span id="comp5Val">0.00</span> / 10.0</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                            <div id="comp5Bar" class="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AUDIT LEDGER TABLES (RECOVERY TARGETS & VERIFIED MATCHES) -->
+        <section class="space-y-6">
+            <!-- Table 1: Top Point Recovery Targets -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                <div class="p-5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-2.5">
+                        <span class="h-3 w-3 rounded-full bg-amber-400"></span>
+                        <div>
+                            <h3 class="text-base font-bold text-white">Top Point Recovery Targets (Highest ROI First)</h3>
+                            <p class="text-xs text-slate-400">Missing (0.0x), Root-Stem (0.5x), or Skills-Only (0.4x) keywords costing you points. Inject into Work Experience bullets to recover.</p>
+                        </div>
+                    </div>
+                    <span id="recoveryCountBadge" class="px-3 py-1 rounded-lg text-xs font-mono font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                        0 Gaps Found
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 bg-slate-950/60 text-[11px] font-mono uppercase text-slate-400">
+                                <th class="py-3 px-4">Requirement</th>
+                                <th class="py-3 px-4">Tier</th>
+                                <th class="py-3 px-4 text-right">Max Weight</th>
+                                <th class="py-3 px-4 text-right">Match Credit</th>
+                                <th class="py-3 px-4 text-right">Placement Mult</th>
+                                <th class="py-3 px-4 text-right">Earned Pts</th>
+                                <th class="py-3 px-4 text-right text-amber-300">Points Lost</th>
+                                <th class="py-3 px-4">Resume Evidence / Diagnostic</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recoveryTableBody" class="divide-y divide-slate-800/60 text-xs sm:text-sm font-mono">
+                            <tr>
+                                <td colspan="8" class="py-8 text-center text-slate-500">Run an audit or click "Load 94/100 Demo" to view prioritized point recovery targets.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Table 2: Verified Matches Already Earning Points -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                <div class="p-5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-2.5">
+                        <span class="h-3 w-3 rounded-full bg-emerald-400"></span>
+                        <div>
+                            <h3 class="text-base font-bold text-white">Verified Matches Already Earning Points</h3>
+                            <p class="text-xs text-slate-400">Exact and stem-matched requirements verified across your Work Experience, Education, and Skills sections.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <input id="matchSearchInput" type="text" placeholder="Filter matched terms..." class="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-slate-200 placeholder-slate-500 focus:border-cyan-500 focus:outline-none" />
+                        <span id="verifiedCountBadge" class="px-3 py-1 rounded-lg text-xs font-mono font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                            0 Verified Matches
+                        </span>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 bg-slate-950/60 text-[11px] font-mono uppercase text-slate-400">
+                                <th class="py-3 px-4">Requirement</th>
+                                <th class="py-3 px-4">Tier</th>
+                                <th class="py-3 px-4 text-right">Max Weight</th>
+                                <th class="py-3 px-4 text-right">Match Credit</th>
+                                <th class="py-3 px-4 text-right">Placement Mult</th>
+                                <th class="py-3 px-4 text-right text-emerald-300">Earned Pts</th>
+                                <th class="py-3 px-4 text-right">Points Lost</th>
+                                <th class="py-3 px-4">Verbatim Resume Evidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="verifiedTableBody" class="divide-y divide-slate-800/60 text-xs sm:text-sm font-mono">
+                            <tr>
+                                <td colspan="8" class="py-8 text-center text-slate-500">No matches calculated yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- HOW TO HOST THIS ONLINE FOR FREE (GITHUB PAGES / NETLIFY GUIDE) -->
+        <section class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 space-y-4">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                    </svg>
+                    How to Publish This Web App Online for Free (GitHub Pages)
+                </h3>
+                <span class="text-xs font-mono text-slate-400">Zero Server Costs • 100% Static HTML</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300">
+                <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+                    <div class="font-mono font-bold text-cyan-400">Step 1: Save as index.html</div>
+                    <p class="text-slate-400 leading-relaxed">Save this single file as <code class="text-slate-200 font-mono">index.html</code> inside your GitHub repository alongside your <code class="text-slate-200 font-mono">EnterpriseATSAuditor.ps1</code> script.</p>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+                    <div class="font-mono font-bold text-cyan-400">Step 2: Enable GitHub Pages</div>
+                    <p class="text-slate-400 leading-relaxed">In your GitHub repo, click <strong>Settings &rarr; Pages</strong>, select <strong>Deploy from a branch</strong>, choose <code class="text-slate-200 font-mono">main</code>, and click <strong>Save</strong>.</p>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+                    <div class="font-mono font-bold text-cyan-400">Step 3: Share Your Live URL</div>
+                    <p class="text-slate-400 leading-relaxed">Within 60 seconds, GitHub will publish your live web app at <code class="text-slate-200 font-mono">https://&lt;username&gt;.github.io/&lt;repo-name&gt;/</code> for anyone to use in their browser.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        /*************************************************************************
+         * 1. DEMO DATA (ALEXANDRU MANNING 94/100 CLEAN RESUME & MASTERCARD JD)
+         *************************************************************************/
+        const DEMO_RESUME = `ALEXANDRU MANNING
+St. Louis, MO | (314) 323-7008 | alexandrumanning2@gmail.com | LinkedIn: /in/alexandru-manning
+
+SENIOR OPERATIONS & WORKFORCE ANALYST | FORECASTING, CAPACITY & PRODUCT OPERATIONS
+Senior Workforce & Operations Analyst with 8+ years of experience turning demand, staffing, financial, and operational performance data into strategic business decisions across enterprise healthcare and high-volume retail. Expertise includes demand forecasting, capacity planning, scheduling, intraday management, real-time adherence, shrinkage, queue optimization, risk mitigation, accounts receivable reconciliation, and Service Level Agreement (SLA) / Key Performance Indicator (KPI) governance. Tools include NICE IEX, Genesys Cloud, Amazon Connect, Salesforce CRM, Epic, Python, Tableau, Power BI, MicroStrategy, and Microsoft Excel (PivotTables, Power Query).
+
+CORE COMPETENCIES & TECHNICAL SKILLS
+Workforce & Operations Management: Demand Forecasting, Capacity & Workforce Planning, Staffing Models, Scheduling, Intraday Management, Real-Time Adherence, Shrinkage, Queue Optimization, SLA/ASA Performance, Risk & Process Improvement
+Systems, CRM & Analytics: Microsoft Excel (PivotTables, Power Query), Python, Tableau, Power BI, MicroStrategy, Salesforce, Epic, Internal CRM Databases, NICE IEX, Genesys Cloud, Amazon Connect, Key Performance Indicator (KPI) Reporting, Variance Analysis
+Financial & Commercial Operations: Accounts Receivable, Grant Drawdowns, Vendor Invoicing, Billing Reconciliation, P&L & Budget Governance, Audit Readiness, Executive Advising, Cross-Functional Collaboration, Scenario Planning, Onboarding, Training, Customer Engagement
+
+PROFESSIONAL EXPERIENCE
+
+Optum | Senior Workforce Analyst | 12/2024 - 04/2026
+• Owned multi-skill workforce and capacity models across enterprise healthcare operations, balancing demand, staffing availability, operational risk, labor variance, and SLA/ASA KPI requirements.
+• Automated demand forecasts in Python and built Tableau analytics dashboards linking call-volume trends to capacity, streamlining executive reporting for faster intraday staffing decisions.
+• Analyzed real-time adherence, shrinkage, exceptions, and capacity gaps; advised senior operations and product management leaders and optimized routing across NICE IEX, Genesys Cloud, and Amazon Connect.
+
+Starbucks | Store Manager / Concept Store Manager | 01/2022 - 12/2024
+• Owned end-to-end commercial operations and P&L performance for a high-volume $3M+ location, aligning labor, schedules, service delivery, cost controls, and customer acquisition and revenue objectives.
+• Integrated point-of-sale (POS), inventory, and workforce analytics data to forecast demand, coordinate scheduling, and optimize labor coverage across peak commercial periods.
+• Directed recruiting, onboarding, training, and KPI performance briefings to reinforce team accountability, customer engagement, retention, and operational productivity.
+
+IMG Health Clinic | Grants Manager | 04/2019 - 01/2022
+• Directed grant-funded healthcare operations workflows and cross-functional coordination; maintained Key Performance Indicator (KPI) visibility and delivered executive reporting updates.
+• Standardized Microsoft Excel and Salesforce / internal CRM tracking models, streamlining financial reporting, strengthening data integrity, and supporting regulatory compliance and audit readiness.
+• Managed accounts receivable workflows, grant drawdowns, vendor invoicing, billing reconciliation, and budget-allocation forecasting models, linking spending trends and variance analysis to multi-year resource needs.
+
+Health Council of Southeast Florida | Case Manager | 11/2017 - 04/2019
+• Owned a high-volume healthcare caseload utilizing Epic and internal CRM databases to coordinate stakeholders, community resources, service delivery, and client interventions for continuity of care.
+• Standardized educational documentation and KPI trend reports supporting program alignment, client outcomes, and community health initiatives.
+
+EDUCATION
+Bachelor of Science (B.S.) in Information Technology & Data Analytics (In Progress) | Columbia Southern University
+Associate of Arts (A.A.) in Health Science | Broward College, Fort Lauderdale, FL | 05/2025`;
+
+        const DEMO_JD = `Title: Associate Product Specialist, Commercial Operations - Mastercard Commerce Media
+Location: St. Louis, MO (Hybrid)
+
+Overview
+Mastercard Commerce Media is seeking an Associate Product Specialist to support our growing Commercial Operations and Product Management teams. In this role, you will streamline billing, invoicing, and accounts receivable workflows while maintaining strict KPI reporting and audit readiness across enterprise accounts.
+
+Required Qualifications (What You Bring)
+• Bachelor's degree or equivalent combination of education and operational experience.
+• 3+ years of experience in commercial operations, analytics, financial operations, or product management support.
+• Strong Microsoft Excel proficiency (PivotTables, financial tracking models) and experience working with CRM platforms (such as Salesforce) to track customer acquisition and account onboarding.
+• Demonstrated ability to manage accounts receivable, invoicing, and billing reconciliation processes with high data integrity.
+• Experience monitoring operational KPI metrics, identifying process risk, and supporting internal and external audit readiness.
+• Track record of delivering training, onboarding documentation, and cross-functional support across product, finance, and AI-enabled commerce platforms.
+
+All About You / Corporate Security & Equal Opportunity
+Mastercard is an equal opportunity employer and provides reasonable accommodations to qualified individuals.`;
+
+        /*************************************************************************
+         * 2. DETERMINISTIC ATS ENGINE DICTIONARIES (1:1 PORT OF POWERSHELL)
+         *************************************************************************/
+        const NOISE_WORDS = new Set([
+            "the","and","for","with","you","will","are","have","this","that","from","your","our","work","team","role","must","able",
+            "years","experience","preferred","required","minimum","qualifications","responsibilities","about","company","benefits",
+            "equal","opportunity","include","including","support","supports","supporting","business","management","position","overview",
+            "summary","title","ensure","ensures","report","reports","accommodations","reasonable","all","within","strong","specialist",
+            "associate","senior","manager","director","analyst","lead","partner","partners","assists","assist","performs","perform",
+            "approaches","services","solutions","global","enterprise","internal","external","client","clients","customer","customers",
+            "develop","develops","manage","manages","build","builds","drive","drives","deliver","delivers","collaborate","create",
+            "maintain","maintains","analyze","analyzes","identify","provide","provides","execute","track","monitor","prepare","review",
+            "excellent","proven","demonstrated","ability","skills","knowledge","understanding","proficiency","advanced","intermediate",
+            "high","volume","fast","paced","environment","cross","functional","stakeholders","leadership","communication","written",
+            "verbal","detail","oriented","problem","solving","critical","thinking","self","starter","motivated","results","driven",
+            "mastercard","commerce","media","location","hybrid","remote","office","full","time","part","department","division",
+            "what","who","where","when","why","how","other","duties","assigned","related","field","equivalent","combination",
+            "pay","ranges","range","salary","compensation","base","bonus","bring","seeking","growing"
+        ]);
+
+        const DOMAIN_TERMS = [
+            "sql","python","tableau","power bi","microstrategy","looker","excel","pivottables","power query","vba",
+            "nice iex","genesys","amazon connect","aspect","verint","aws","azure","gcp","snowflake","databricks",
+            "erp","sap","oracle","netsuite","crm","salesforce","hubspot","dynamics","epic","workday","servicenow",
+            "jira","confluence","smartsheet","asana","forecasting","capacity planning","demand planning","scheduling",
+            "intraday","real-time adherence","shrinkage","sla","asa","kpi","okr","compliance","grants","audit",
+            "sox","hipaa","gdpr","governance","risk","controls","analytics","data analysis","reporting",
+            "variance analysis","financial modeling","budget","p&l","accounts receivable","accounts payable",
+            "invoicing","billing","reconciliation","general ledger","gaap","procurement","vendor management",
+            "supply chain","logistics","inventory","operations","process improvement","six sigma","lean","agile",
+            "scrum","pmp","project management","program management","product management","customer acquisition",
+            "retention","onboarding","training","case management","bachelor","master","mba"
+        ];
+
+        const HIGH_WEIGHT_DOMAIN_SET = new Set([
+            "sql","python","tableau","power bi","microstrategy","excel","nice iex","genesys","amazon connect",
+            "salesforce","epic","crm","erp","audit","kpi","sla","forecasting","capacity planning",
+            "accounts receivable","risk","compliance"
+        ]);
+
+        const WHITELISTED_ACRONYMS = [
+            "CRM","ERP","SQL","KPI","SLA","ASA","OKR","ROI","B2B","B2C","SaaS","PaaS","IaaS","AWS","GCP",
+            "API","ETL","ELT","BI","AI","ML","NLP","RPA","VBA","POS","P&L","AR","AP","GL","GAAP","SOX",
+            "HIPAA","GDPR","PCI","ISO","ITIL","PMP","CSM","CPA","CFA","PHR","SHRM","HRIS","HCM","WMS",
+            "TMS","OMS","EDI","RFP","RFQ","SOW","UAT","QA","UI","UX","SEO","SEM","PPC","CPC","CPM","CTR"
+        ];
+
+        const BOILERPLATE_LINE_REGEX = /(reasonable accommodation|equal opportunity|affirmative action|sexual orientation|gender identity|veteran status|disability|background check|drug screen|all about you|corporate security|pay transparency|salary range)/i;
+
+        // State for exporting
+        let lastAuditState = null;
+
+        /*************************************************************************
+         * 3. HELPER FUNCTIONS: TOAST, REGEX ESCAPE, DOCX XML EXTRACTOR
+         *************************************************************************/
+        function showToast(message, isWarning = false) {
+            const toast = document.getElementById('statusToast');
+            const dot = document.getElementById('statusToastDot');
+            const txt = document.getElementById('statusToastText');
+            txt.textContent = message;
+            dot.className = isWarning
+                ? 'h-2.5 w-2.5 rounded-full bg-amber-400 animate-pulse'
+                : 'h-2.5 w-2.5 rounded-full bg-cyan-400 animate-pulse';
+            toast.classList.remove('hidden');
+            clearTimeout(window._toastTimer);
+            window._toastTimer = setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3500);
+        }
+
+        function escapeRegExp(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        // Exact Word-Boundary Helper (handles terms like P&L or C++)
+        function buildTermBoundaryRegex(term, flags = 'i') {
+            const escaped = escapeRegExp(term);
+            return new RegExp(`(?:^|[^A-Za-z0-9_])(${escaped})(?=$|[^A-Za-z0-9_])`, flags);
+        }
+
+        // Native Client-Side .docx OpenXML Extractor with Run-Spacing Repair
+        async function extractTextFromFile(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext === 'pdf') {
+                throw new Error("PDF files are binary. Please select a .docx, .txt, or .md file.");
+            }
+            if (ext === 'docx') {
+                const arrayBuffer = await file.arrayBuffer();
+                const zip = await JSZip.loadAsync(arrayBuffer);
+                const docXmlFile = zip.file("word/document.xml");
+                if (!docXmlFile) {
+                    throw new Error("Invalid .docx file: word/document.xml not found.");
+                }
+                const xmlContent = await docXmlFile.async("string");
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlContent, "application/xml");
+                const paragraphs = xmlDoc.getElementsByTagName("w:p");
+                const outLines = [];
+
+                for (let i = 0; i < paragraphs.length; i++) {
+                    const p = paragraphs[i];
+                    const tNodes = p.getElementsByTagName("w:t");
+                    const runTexts = [];
+                    for (let j = 0; j < tNodes.length; j++) {
+                        if (tNodes[j].textContent) {
+                            runTexts.push(tNodes[j].textContent);
+                        }
+                    }
+                    // Join XML <w:t> runs with a single space to prevent bolded-word concatenation bugs
+                    const joined = runTexts.join(" ").replace(/\s+/g, " ").trim();
+                    if (joined.length > 0) {
+                        outLines.push(joined);
+                    }
+                }
+                document.getElementById('xmlRepairBadge').classList.remove('hidden');
+                return outLines.join("\n");
+            }
+            // Default text/markdown reader
+            document.getElementById('xmlRepairBadge').classList.add('hidden');
+            return await file.text();
+        }
+
+        /*************************************************************************
+         * 4. CORE DETERMINISTIC 100-POINT ATS AUDIT ALGORITHM
+         *************************************************************************/
+        function runDeterministicATSAudit() {
+            const resumeRaw = document.getElementById('resumeText').value || "";
+            const jdRaw = document.getElementById('jdText').value || "";
+            const requiredYears = parseFloat(document.getElementById('reqYearsInput').value) || 3;
+
+            document.getElementById('resumeCharCount').textContent = `${resumeRaw.length} chars`;
+            document.getElementById('jdCharCount').textContent = `${jdRaw.length} chars`;
+
+            if (resumeRaw.trim().length < 50 || jdRaw.trim().length < 50) {
+                showToast("Please provide both a Resume and a Job Description (at least 50 chars each).", true);
+                return;
+            }
+
+            // STEP 1: Isolate Work Experience Section for 1.0x vs 0.4x Placement Multiplier
+            let expSection = resumeRaw;
+            const expMatch = resumeRaw.match(/(?:work experience|professional experience|employment history)([\s\S]*?)(?:education|certifications|$)/i);
+            if (expMatch && expMatch[1]) {
+                expSection = expMatch[1];
+            }
+
+            // STEP 2: Strip EEO, ADA, Pay Range, and Corporate Boilerplate lines from JD
+            const jdLines = jdRaw.split(/\r?\n/);
+            const jdCleanLines = jdLines.filter(line => !BOILERPLATE_LINE_REGEX.test(line));
+
+            // STEP 3: Extract JD Entities & Base Weights
+            const entities = new Map();
+            let currentMultiplier = 2.0;
+
+            // Pre-build Domain Regex
+            const domainPattern = DOMAIN_TERMS.map(t => escapeRegExp(t)).join("|");
+            const domainRegex = new RegExp(`\\b(${domainPattern})\\b`, "gi");
+
+            // Pre-build Whitelisted Acronym Regex
+            const acroPattern = WHITELISTED_ACRONYMS.map(t => escapeRegExp(t)).join("|");
+            const acroRegex = new RegExp(`(?:^|[^A-Za-z0-9_])(${acroPattern})(?=$|[^A-Za-z0-9_])`, "g");
+
+            // Multi-word Proper Technical Noun Regex
+            const phraseRegex = /\b([A-Z][a-z0-9\+\#\-]{2,})\s+([A-Z][a-z0-9\+\#\-]{2,})\b/g;
+
+            for (const line of jdCleanLines) {
+                if (/^\s*(preferred|nice to have|desired|bonus)/i.test(line)) {
+                    currentMultiplier = 1.0;
+                } else if (/^\s*(required|minimum|must have|qualifications|what you bring)/i.test(line)) {
+                    currentMultiplier = 2.0;
+                }
+
+                // A: Curated Cross-Industry Domain Dictionary
+                let dm;
+                domainRegex.lastIndex = 0;
+                while ((dm = domainRegex.exec(line)) !== null) {
+                    const term = dm[1].trim();
+                    const key = term.toLowerCase();
+                    if (!entities.has(key)) {
+                        const baseW = HIGH_WEIGHT_DOMAIN_SET.has(key) ? 3 : 2;
+                        entities.set(key, {
+                            Term: term,
+                            BaseWeight: baseW,
+                            Multiplier: currentMultiplier,
+                            MaxWeight: baseW * currentMultiplier
+                        });
+                    }
+                }
+
+                // B: Whitelisted Enterprise Acronyms
+                let am;
+                acroRegex.lastIndex = 0;
+                while ((am = acroRegex.exec(line)) !== null) {
+                    const term = am[1].trim();
+                    const key = term.toLowerCase();
+                    if (!entities.has(key)) {
+                        entities.set(key, {
+                            Term: term,
+                            BaseWeight: 3,
+                            Multiplier: currentMultiplier,
+                            MaxWeight: 3 * currentMultiplier
+                        });
+                    }
+                }
+
+                // C: Multi-Word Proper Technical Nouns (Kept only if neither word is in NOISE_WORDS)
+                let pm;
+                phraseRegex.lastIndex = 0;
+                while ((pm = phraseRegex.exec(line)) !== null) {
+                    const w1 = pm[1];
+                    const w2 = pm[2];
+                    if (!NOISE_WORDS.has(w1.toLowerCase()) && !NOISE_WORDS.has(w2.toLowerCase())) {
+                        const term = `${w1} ${w2}`;
+                        const key = term.toLowerCase();
+                        if (!entities.has(key)) {
+                            entities.set(key, {
+                                Term: term,
+                                BaseWeight: 2,
+                                Multiplier: currentMultiplier,
+                                MaxWeight: 2 * currentMultiplier
+                            });
+                        }
+                    }
+                }
+            }
+
+            // STEP 4: Score Every Extracted Entity Against Resume
+            let totalPossibleMaxWeight = 0.0;
+            let sumKwMatchedWeight = 0.0;
+            let sumContextualEarned = 0.0;
+            const ledger = [];
+
+            const expLines = expSection.split(/\r?\n/);
+
+            for (const [key, item] of entities.entries()) {
+                const maxW = item.MaxWeight;
+                totalPossibleMaxWeight += maxW;
+                const exactRegex = buildTermBoundaryRegex(item.Term, 'i');
+
+                let matchCredit = 0.0;
+                let placementMult = 0.0;
+                let quote = "MISSING";
+
+                if (exactRegex.test(expSection)) {
+                    matchCredit = 1.0;
+                    placementMult = 1.0;
+                    const foundLine = expLines.find(l => exactRegex.test(l));
+                    quote = foundLine ? foundLine.trim() : "Verified in Experience";
+                } else if (exactRegex.test(resumeRaw)) {
+                    matchCredit = 1.0;
+                    const isDegree = /^(bachelor|master|mba|associate|degree)$/i.test(key);
+                    placementMult = isDegree ? 1.0 : 0.4;
+                    quote = isDegree ? "[Verified in Education - 1.0x]" : "[Summary/Skills Only - 0.4x Penalty]";
+                } else if (item.Term.length >= 6) {
+                    const stem = escapeRegExp(item.Term.substring(0, 6));
+                    const stemRegex = new RegExp(`\\b${stem}[a-z]+\\b`, 'i');
+                    if (stemRegex.test(expSection)) {
+                        matchCredit = 0.5;
+                        placementMult = 1.0;
+                        quote = "[0.5x Root Match in Experience]";
+                    } else if (stemRegex.test(resumeRaw)) {
+                        matchCredit = 0.5;
+                        placementMult = 0.4;
+                        quote = "[0.5x Root Match in Summary/Skills]";
+                    }
+                }
+
+                const kwScore = maxW * matchCredit;
+                const earnedScore = maxW * matchCredit * placementMult;
+                sumKwMatchedWeight += kwScore;
+                sumContextualEarned += earnedScore;
+
+                ledger.push({
+                    Requirement: item.Term,
+                    Tier: item.Multiplier === 2.0 ? "Required (2x)" : "Preferred (1x)",
+                    MaxWeight: maxW,
+                    MatchCredit: matchCredit,
+                    PlacementMult: placementMult,
+                    EarnedPts: Number(earnedScore.toFixed(2)),
+                    PointsLost: Number((maxW - earnedScore).toFixed(2)),
+                    ResumeEvidence: quote.length > 64 ? quote.substring(0, 64) + "..." : quote
+                });
+            }
+
+            if (totalPossibleMaxWeight === 0) totalPossibleMaxWeight = 1;
+
+            // STEP 5: 5-Component Composite Score Calculation
+            const comp1_KW = Number((45.0 * (sumKwMatchedWeight / totalPossibleMaxWeight)).toFixed(2));
+            const comp2_Context = Number((20.0 * (sumContextualEarned / totalPossibleMaxWeight)).toFixed(2));
+
+            // Component 3: Flexible Date Parser (Supports MM/YYYY, Month YYYY, and YYYY - YYYY)
+            const datePattern = /\b(?:(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|0?[1-9]|1[0-2])[\s/\-,\.]+)?(20\d{2}|19\d{2})\s*(?:[\-\u2013\u2014]+|to)\s*(?:(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|0?[1-9]|1[0-2])[\s/\-,\.]+)?(20\d{2}|19\d{2}|Present|Current)\b/gi;
+            const dateMatches = [...resumeRaw.matchAll(datePattern)];
+            let totalMonths = 0;
+            const currentYear = new Date().getFullYear();
+
+            for (const dm of dateMatches) {
+                const sYear = parseInt(dm[2], 10);
+                const eRaw = dm[4];
+                const eYear = /present|current/i.test(eRaw) ? currentYear : parseInt(eRaw, 10);
+                let months = (eYear - sYear) * 12;
+                if (months === 0) months = 6;
+                if (months > 0 && months < 360) {
+                    totalMonths += months;
+                }
+            }
+
+            const calcYears = Number((totalMonths / 12.0).toFixed(1));
+            const tenurePts = calcYears >= requiredYears ? 5.0 : (calcYears >= (requiredYears - 1) ? 3.0 : 1.0);
+            const scalePts = /(\$\d+|\d+%|\d+\+?\s*(employees|staff|agents|clients|users|stores|accounts))/i.test(resumeRaw) ? 5.0 : 2.5;
+            const comp3_Tenure = Number((tenurePts + scalePts + 4.0).toFixed(2));
+
+            // Component 4: Hard Knockout Gates
+            const hasDegree = /\b(Bachelor|Master|B\.S\.|B\.A\.|M\.S\.|M\.B\.A\.|Associate|Degree|University|College|BSc|BA|BS)\b/i.test(resumeRaw);
+            const comp4_Knockout = hasDegree ? 10.0 : 0.0;
+
+            // Component 5: HR-XML Parseability Hygiene
+            let comp5_Hygiene = 10.0;
+            if (!/(experience|employment|history)/i.test(resumeRaw)) comp5_Hygiene -= 2.0;
+            if (dateMatches.length === 0) comp5_Hygiene -= 3.0;
+            if (!/(education|skills|university|college)/i.test(resumeRaw)) comp5_Hygiene -= 2.0;
+
+            const compositeScore = Number((comp1_KW + comp2_Context + comp3_Tenure + comp4_Knockout + comp5_Hygiene).toFixed(1));
+
+            lastAuditState = {
+                compositeScore,
+                entityCount: entities.size,
+                calcYears,
+                dateRangeCount: dateMatches.length,
+                hasDegree,
+                comp1_KW,
+                comp2_Context,
+                comp3_Tenure,
+                comp4_Knockout,
+                comp5_Hygiene,
+                ledger
+            };
+
+            renderScorecardUI(lastAuditState);
+            localStorage.setItem('ats_saved_resume', resumeRaw);
+            localStorage.setItem('ats_saved_jd', jdRaw);
+        }
+
+        /*************************************************************************
+         * 5. UI RENDERER
+         *************************************************************************/
+        function renderScorecardUI(state) {
+            document.getElementById('diagnosticsBanner').textContent =
+                `[Diagnostics] Resume: ${document.getElementById('resumeText').value.length} chars | JD: ${document.getElementById('jdText').value.length} chars | ${state.entityCount} clean requirements scored`;
+
+            const scoreEl = document.getElementById('compositeScoreDisplay');
+            scoreEl.textContent = state.compositeScore;
+            if (state.compositeScore >= 85) {
+                scoreEl.className = "text-6xl sm:text-7xl font-extrabold tracking-tight text-emerald-400 font-mono";
+            } else if (state.compositeScore >= 65) {
+                scoreEl.className = "text-6xl sm:text-7xl font-extrabold tracking-tight text-amber-400 font-mono";
+            } else {
+                scoreEl.className = "text-6xl sm:text-7xl font-extrabold tracking-tight text-rose-400 font-mono";
+            }
+
+            const koBadge = document.getElementById('knockoutBadge');
+            if (state.comp4_Knockout === 10) {
+                koBadge.textContent = "PASS (Degree/Gate Verified)";
+                koBadge.className = "px-2.5 py-0.5 rounded-md font-mono font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30";
+            } else {
+                koBadge.textContent = "AUTO-REJECT WARNING";
+                koBadge.className = "px-2.5 py-0.5 rounded-md font-mono font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30";
+            }
+
+            document.getElementById('tenureBadge').textContent = `${state.calcYears} Years (${state.dateRangeCount} parsed ranges)`;
+            document.getElementById('entityCountBadge').textContent = `${state.entityCount} clean requirements`;
+
+            // Component Bars
+            document.getElementById('comp1Val').textContent = state.comp1_KW.toFixed(2);
+            document.getElementById('comp1Bar').style.width = `${Math.min(100, (state.comp1_KW / 45) * 100)}%`;
+
+            document.getElementById('comp2Val').textContent = state.comp2_Context.toFixed(2);
+            document.getElementById('comp2Bar').style.width = `${Math.min(100, (state.comp2_Context / 20) * 100)}%`;
+
+            document.getElementById('comp3Val').textContent = state.comp3_Tenure.toFixed(2);
+            document.getElementById('comp3Bar').style.width = `${Math.min(100, (state.comp3_Tenure / 15) * 100)}%`;
+
+            document.getElementById('comp4Val').textContent = state.comp4_Knockout.toFixed(2);
+            document.getElementById('comp4Bar').style.width = `${Math.min(100, (state.comp4_Knockout / 10) * 100)}%`;
+
+            document.getElementById('comp5Val').textContent = state.comp5_Hygiene.toFixed(2);
+            document.getElementById('comp5Bar').style.width = `${Math.min(100, (state.comp5_Hygiene / 10) * 100)}%`;
+
+            renderTables();
+        }
+
+        function renderTables() {
+            if (!lastAuditState) return;
+            const filterQuery = (document.getElementById('matchSearchInput').value || "").toLowerCase().trim();
+
+            // 1. Recovery Table
+            const recoveryItems = lastAuditState.ledger
+                .filter(item => item.PointsLost > 0)
+                .sort((a, b) => b.PointsLost - a.PointsLost);
+
+            document.getElementById('recoveryCountBadge').textContent = `${recoveryItems.length} Recovery Targets`;
+            const recBody = document.getElementById('recoveryTableBody');
+
+            if (recoveryItems.length === 0) {
+                recBody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-emerald-400">Zero gaps found! 100% of extracted requirements earned full credit.</td></tr>`;
+            } else {
+                recBody.innerHTML = recoveryItems.map(item => `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="py-3 px-4 font-semibold text-white">${escapeHtml(item.Requirement)}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-0.5 rounded text-[11px] ${item.Tier.includes('Required') ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30' : 'bg-slate-800 text-slate-300'}">${item.Tier}</span>
+                        </td>
+                        <td class="py-3 px-4 text-right text-slate-300">${item.MaxWeight}</td>
+                        <td class="py-3 px-4 text-right text-slate-300">${item.MatchCredit}</td>
+                        <td class="py-3 px-4 text-right text-slate-300">${item.PlacementMult}</td>
+                        <td class="py-3 px-4 text-right text-slate-400">${item.EarnedPts}</td>
+                        <td class="py-3 px-4 text-right font-bold text-amber-400">-${item.PointsLost}</td>
+                        <td class="py-3 px-4 text-rose-300/90">${escapeHtml(item.ResumeEvidence)}</td>
+                    </tr>
+                `).join('');
+            }
+
+            // 2. Verified Matches Table
+            const verifiedItems = lastAuditState.ledger
+                .filter(item => item.EarnedPts > 0 && (!filterQuery || item.Requirement.toLowerCase().includes(filterQuery) || item.ResumeEvidence.toLowerCase().includes(filterQuery)))
+                .sort((a, b) => b.EarnedPts - a.EarnedPts);
+
+            document.getElementById('verifiedCountBadge').textContent = `${verifiedItems.length} Verified Matches`;
+            const verBody = document.getElementById('verifiedTableBody');
+
+            if (verifiedItems.length === 0) {
+                verBody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-slate-500">No verified matches found matching filter.</td></tr>`;
+            } else {
+                verBody.innerHTML = verifiedItems.map(item => `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="py-3 px-4 font-semibold text-emerald-300">${escapeHtml(item.Requirement)}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-0.5 rounded text-[11px] ${item.Tier.includes('Required') ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30' : 'bg-slate-800 text-slate-300'}">${item.Tier}</span>
+                        </td>
+                        <td class="py-3 px-4 text-right text-slate-300">${item.MaxWeight}</td>
+                        <td class="py-3 px-4 text-right text-slate-300">${item.MatchCredit}</td>
+                        <td class="py-3 px-4 text-right text-slate-300">${item.PlacementMult}</td>
+                        <td class="py-3 px-4 text-right font-bold text-emerald-400">+${item.EarnedPts}</td>
+                        <td class="py-3 px-4 text-right text-slate-500">${item.PointsLost}</td>
+                        <td class="py-3 px-4 text-slate-300">${escapeHtml(item.ResumeEvidence)}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        /*************************************************************************
+         * 6. EVENT LISTENERS & EXPORT HANDLERS
+         *************************************************************************/
+        window.addEventListener('DOMContentLoaded', () => {
+            const resumeEl = document.getElementById('resumeText');
+            const jdEl = document.getElementById('jdText');
+
+            // Load Demo button
+            document.getElementById('btnLoadDemo').addEventListener('click', () => {
+                resumeEl.value = DEMO_RESUME;
+                jdEl.value = DEMO_JD;
+                document.getElementById('xmlRepairBadge').classList.remove('hidden');
+                runDeterministicATSAudit();
+                showToast("Loaded Alexandru Manning 94/100 Demo Resume & Mastercard JD!");
+            });
+
+            // Run buttons
+            document.getElementById('btnRunAuditTop').addEventListener('click', () => {
+                runDeterministicATSAudit();
+                showToast("ATS Scorecard updated.");
+            });
+            document.getElementById('btnRunAuditMain').addEventListener('click', () => {
+                runDeterministicATSAudit();
+                showToast("ATS Scorecard updated.");
+            });
+
+            // Live character counts
+            resumeEl.addEventListener('input', () => {
+                document.getElementById('resumeCharCount').textContent = `${resumeEl.value.length} chars`;
+            });
+            jdEl.addEventListener('input', () => {
+                document.getElementById('jdCharCount').textContent = `${jdEl.value.length} chars`;
+            });
+
+            // Filter matches input
+            document.getElementById('matchSearchInput').addEventListener('input', renderTables);
+
+            // Clear buttons
+            document.getElementById('btnClearResume').addEventListener('click', () => {
+                resumeEl.value = "";
+                document.getElementById('resumeCharCount').textContent = "0 chars";
+                document.getElementById('xmlRepairBadge').classList.add('hidden');
+            });
+            document.getElementById('btnClearJd').addEventListener('click', () => {
+                jdEl.value = "";
+                document.getElementById('jdCharCount').textContent = "0 chars";
+            });
+
+            // File Upload: Resume
+            document.getElementById('resumeFileInput').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                try {
+                    const text = await extractTextFromFile(file);
+                    resumeEl.value = text;
+                    document.getElementById('resumeCharCount').textContent = `${text.length} chars`;
+                    showToast(`Loaded "${file.name}" (${text.length} chars) with XML spacing repair.`);
+                    if (jdEl.value.trim().length >= 50) runDeterministicATSAudit();
+                } catch (err) {
+                    showToast(err.message, true);
+                }
+            });
+
+            // Drag-and-Drop on Resume Dropzone
+            const dropzone = document.getElementById('dropzoneLabel');
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('border-cyan-400');
+            });
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('border-cyan-400');
+            });
+            dropzone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('border-cyan-400');
+                const file = e.dataTransfer.files[0];
+                if (!file) return;
+                try {
+                    const text = await extractTextFromFile(file);
+                    resumeEl.value = text;
+                    document.getElementById('resumeCharCount').textContent = `${text.length} chars`;
+                    showToast(`Loaded "${file.name}" (${text.length} chars)`);
+                    if (jdEl.value.trim().length >= 50) runDeterministicATSAudit();
+                } catch (err) {
+                    showToast(err.message, true);
+                }
+            });
+
+            // File Upload: JD
+            document.getElementById('jdFileInput').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                try {
+                    const text = await extractTextFromFile(file);
+                    jdEl.value = text;
+                    document.getElementById('jdCharCount').textContent = `${text.length} chars`;
+                    showToast(`Loaded JD file "${file.name}"`);
+                    if (resumeEl.value.trim().length >= 50) runDeterministicATSAudit();
+                } catch (err) {
+                    showToast(err.message, true);
+                }
+            });
+
+            // Paste from Clipboard Button
+            document.getElementById('btnPasteClipboard').addEventListener('click', async () => {
+                try {
+                    const clip = await navigator.clipboard.readText();
+                    if (clip && clip.trim().length > 0) {
+                        jdEl.value = clip;
+                        document.getElementById('jdCharCount').textContent = `${clip.length} chars`;
+                        showToast("Pasted Job Description from Clipboard!");
+                        if (resumeEl.value.trim().length >= 50) runDeterministicATSAudit();
+                    } else {
+                        showToast("Clipboard is empty. Press Ctrl+V directly inside the JD box.", true);
+                    }
+                } catch (err) {
+                    jdEl.focus();
+                    showToast("Browser blocked direct clipboard read — press Ctrl+V inside the JD box.", true);
+                }
+            });
+
+            // Export Scorecard (.txt)
+            document.getElementById('btnExportTxt').addEventListener('click', () => {
+                if (!lastAuditState) {
+                    showToast("Run an audit first before exporting.", true);
+                    return;
+                }
+                const s = lastAuditState;
+                const lines = [
+                    "=======================================================",
+                    "   DETERMINISTIC ENTERPRISE ATS SCORECARD (WEB EDITION)",
+                    "=======================================================",
+                    `Composite ATS Score     : ${s.compositeScore} / 100`,
+                    `Extracted JD Entities   : ${s.entityCount} clean requirements scored`,
+                    `Calculated Resume Tenure: ${s.calcYears} Years (across ${s.dateRangeCount} parsed date ranges)`,
+                    `Knockout Gate Status    : ${s.comp4_Knockout === 10 ? 'PASS' : 'AUTO-REJECT WARNING'}`,
+                    "-------------------------------------------------------",
+                    `1. Weighted Keyword & Taxonomy (Max 45) : ${s.comp1_KW}`,
+                    `2. Contextual Placement/Recency (Max 20): ${s.comp2_Context}`,
+                    `3. Title, Tenure & Scale        (Max 15): ${s.comp3_Tenure}`,
+                    `4. Hard Knockout Gates          (Max 10): ${s.comp4_Knockout}`,
+                    `5. HR-XML Parseability Hygiene  (Max 10): ${s.comp5_Hygiene}`,
+                    "=======================================================\n",
+                    "=== TOP POINT RECOVERY TARGETS ===",
+                    ...s.ledger.filter(x => x.PointsLost > 0).sort((a,b) => b.PointsLost - a.PointsLost)
+                        .map(x => `${x.Requirement.padEnd(22)} | ${x.Tier.padEnd(14)} | Lost: -${x.PointsLost} | ${x.ResumeEvidence}`),
+                    "\n=== VERIFIED MATCHES ALREADY EARNING POINTS ===",
+                    ...s.ledger.filter(x => x.EarnedPts > 0).sort((a,b) => b.EarnedPts - a.EarnedPts)
+                        .map(x => `${x.Requirement.padEnd(22)} | ${x.Tier.padEnd(14)} | Earned: +${x.EarnedPts} | ${x.ResumeEvidence}`)
+                ];
+                const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `ATS_Audit_Scorecard_${s.compositeScore}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // Export Ledger (.csv)
+            document.getElementById('btnExportCsv').addEventListener('click', () => {
+                if (!lastAuditState) {
+                    showToast("Run an audit first before exporting.", true);
+                    return;
+                }
+                const headers = ["Requirement","Tier","MaxWeight","MatchCredit","PlacementMult","EarnedPts","PointsLost","ResumeEvidence"];
+                const rows = lastAuditState.ledger.map(r => [
+                    `"${r.Requirement.replace(/"/g, '""')}"`,
+                    `"${r.Tier}"`,
+                    r.MaxWeight,
+                    r.MatchCredit,
+                    r.PlacementMult,
+                    r.EarnedPts,
+                    r.PointsLost,
+                    `"${r.ResumeEvidence.replace(/"/g, '""')}"`
+                ].join(","));
+                const csvContent = [headers.join(","), ...rows].join("\n");
+                const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `ATS_Audit_Ledger_${lastAuditState.compositeScore}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // Auto-load Demo on first visit so the dashboard looks alive immediately
+            resumeEl.value = DEMO_RESUME;
+            jdEl.value = DEMO_JD;
+            document.getElementById('xmlRepairBadge').classList.remove('hidden');
+            runDeterministicATSAudit();
+        });
+    </script>
+</body>
+</html>
